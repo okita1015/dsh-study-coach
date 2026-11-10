@@ -1,0 +1,99 @@
+{
+  "name": "dsh-study-coach",
+  "version": "0.16.5",
+  "description": "Study coach for DSH: lecture slides in, notes + practice papers + error log out. Free and open source.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./core": "./lib/core.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "install.mjs",
+    "lib",
+    "scripts",
+    "assets",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "doctor.mjs",
+    "audit.mjs",
+    "study-reset.mjs",
+    "requirements.txt",
+    "test.mjs",
+    "test-render.mjs",
+    "check-tools.mjs",
+    "mark-generated.mjs",
+    "install.cmd",
+    "install.sh"
+  ],
+  "license": "MIT",
+  "author": "dsh-study-coach contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/okita1015/dsh-study-coach.git"
+  },
+  "homepage": "https://github.com/okita1015/dsh-study-coach#readme",
+  "bugs": {
+    "url": "https://github.com/okita1015/dsh-study-coach/issues"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://github.com/okita1015/dsh-study-coach#support"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "os": [
+    "win32",
+    "darwin",
+    "linux"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "cordis",
+    "study",
+    "flashcards",
+    "spaced-repetition",
+    "education",
+    "notes",
+    "study-planner",
+    "pdf",
+    "docx",
+    "pptx"
+  ],
+  "scripts": {
+    "prepublishOnly": "node test.mjs",
+    "test": "node test.mjs",
+    "test:render": "node test-render.mjs",
+    "test:tools": "node check-tools.mjs",
+    "doctor": "node doctor.mjs",
+    "mark-generated": "node mark-generated.mjs",
+    "audit": "node audit.mjs"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.1.5-rc.2 <0.4.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
+    }
+  }
+}

@@ -1,0 +1,64 @@
+name: test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: unit (node ${{ matrix.node }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # 所有 runner 上统一用同一个 python 命令，别赌 windows 有没有 python3 这个别名
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 222 条断言全是纯逻辑：不需要 DSH 安装、不需要 Python 库、不联网。
+      # 依赖 DSH 运行时的那几节在没有 dsh-llm 时会自己跳过。
+      # 失败时把具体挂掉的断言打成 annotation —— 公开仓库的 job log 要登录才能看。
+      - name: core tests
+        shell: bash
+        run: |
+          set +e
+          node test.mjs > test-out.txt 2>&1
+          code=$?
+          cat test-out.txt
+          if [ "$code" -ne 0 ]; then
+            node .github/ci-report.mjs test-out.txt
+          fi
+          exit $code
+
+      - name: python scripts compile
+        run: python -m py_compile scripts/extract.py scripts/make_docx.py scripts/make_pptx.py scripts/make_paper.py scripts/_fonts.py
+
+      # 跨平台审计：没有 DSH 的 runner 上只能做「有没有写死路径 / 平台命令」这半边，
+      # 所以不拿它当门禁，红黄只作提示。
+      - name: cross-platform audit (advisory)
+        continue-on-error: true
+        run: node audit.mjs
+
+      - name: package contents
+        run: npm pack --dry-run
+
+  schema:
+    name: tool schemas (needs DSH runtime, skipped on CI)
+    runs-on: ubuntu-latest
+    steps:
+      - name: note
+        run: |
+          echo "check-tools.mjs / test-render.mjs 需要真实 DSH 安装 + react，"
+          echo "CI 里跑不了，发布前在本地跑：node check-tools.mjs && node test-render.mjs"

@@ -1,0 +1,3 @@
+# 仓库页右上角出现的 “Sponsor” 按钮指向哪里。
+# GitHub 只认这些平台；没有对应账号就用 custom 指到 README 的 Support 段。
+custom: ["https://github.com/okita1015/dsh-study-coach#support"]

@@ -1,0 +1,31 @@
+node_modules/
+*.log
+.DS_Store
+.dsh-project-memory/
+*.bak
+*.bak-*
+*.orig
+*.rej
+dist/
+*.tgz
+
+# Python build leftovers (py_compile / imports leave these behind)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# 本机生成的学习数据，不该进仓库
+study/
+extract/
+generated.json
+paper-template.json
+*.docx
+*.pptx
+*.xlsx
+!template.docx
+
+# 私货：拿真课表/真讲义灌数据的种子脚本，只留本地
+seed-itp3902.mjs
+seed-*.local.mjs
