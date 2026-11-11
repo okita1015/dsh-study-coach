@@ -949,6 +949,14 @@ const rSplit = await pipe2.refineOne(halves, mkJob(), { file: 'big.pdf', name: '
 ok(rSplit.ok === true, '整份失败后拆半救回来了')
 ok(rSplit.topics.length === 2, `两半各出一个知识点（实际 ${rSplit.topics.length}）`)
 
+/* ---------------------------------------------------- 25. 输出目录 */
+// 这里以前会崩：pipeline.js 用了 dshHome() 却没 import，
+// 表现就是「一点生成就报 dshHome is not defined」。这条守着它。
+console.log('\n[25] 生成物的落盘目录')
+const bdir = pipe2.buildDir('ITP3902')
+ok(fs.existsSync(bdir), `buildDir 建得出来（${path.basename(bdir)}）`)
+ok(path.normalize(bdir).endsWith(path.join('study', 'ITP3902', '.build')), '落在 $DSH_HOME/study/<CODE>/.build')
+
 /* ---------------------------------------------------- 结果 */
 console.log(`\n${'='.repeat(46)}`)
 console.log(`通过 ${pass}   失败 ${fail}`)

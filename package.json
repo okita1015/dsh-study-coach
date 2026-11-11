@@ -1,6 +1,6 @@
 {
   "name": "dsh-study-coach",
-  "version": "0.16.7",
+  "version": "0.16.8",
   "description": "Study coach for DSH: lecture slides in, notes + practice papers + error log out. Free and open source.",
   "type": "module",
   "main": "lib/index.js",
