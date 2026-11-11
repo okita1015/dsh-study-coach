@@ -10,11 +10,24 @@ jobs:
   unit:
     name: unit (node ${{ matrix.node }} / ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    # macOS runner 偶尔会分到一台卡住不放的机器 —— 上次挂了 15 分钟被 GitHub 取消，
+    # 整个 run 就算红。10 分钟足够跑完（正常 20~40 秒），超了就是机器的问题。
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        node: ['22', '24']
+        # macOS 只留 node 22：DSH 实际用的就是 22，再跑一遍 24 只是多一个卡点
+        include:
+          - os: ubuntu-latest
+            node: '22'
+          - os: ubuntu-latest
+            node: '24'
+          - os: windows-latest
+            node: '22'
+          - os: windows-latest
+            node: '24'
+          - os: macos-latest
+            node: '22'
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +40,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      # 222 条断言全是纯逻辑：不需要 DSH 安装、不需要 Python 库、不联网。
+      # 233 条断言全是纯逻辑：不需要 DSH 安装、不需要 Python 库、不联网。
       # 依赖 DSH 运行时的那几节在没有 dsh-llm 时会自己跳过。
       # 失败时把具体挂掉的断言打成 annotation —— 公开仓库的 job log 要登录才能看。
       - name: core tests
