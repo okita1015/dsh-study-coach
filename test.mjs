@@ -963,6 +963,59 @@ const mdNote = pipe2.composeNote('ITP3902', [
 ], { scope: 'Lec1' })
 ok(mdNote.includes('正文内容在这里'), '笔记模式把模型给的 md 原样放进笔记')
 
+/* ------------------------------------------- 26. 题目自带的图（figure） */
+// 模型画不出图，只能给「顶点 + 边 + 权重」。这里守两件事：
+// ① 模型各种偷懒写法都要认（nodes 字符串/对象、edges 数组/对象、weight/w）
+// ② 认不出来的时候必须返回 null —— 画一张跟题干对不上的图，比不画糟糕得多
+console.log('\n[26] 题目自带的图：figure 规范化')
+{
+  const pipe3 = await import('./lib/paper.js')
+  const nf = pipe3.normalizeFigure
+
+  ok(nf(null) === null, 'null → null')
+  ok(nf({ kind: 'graph' }) === null, '没有顶点 → null')
+  ok(nf({ nodes: ['A', 'B'], edges: [] }) === null, '没有边 → null')
+  ok(nf({ nodes: ['A'], edges: [['A', 'A']] }) === null, '只有一个顶点 → null')
+
+  const a = nf({ kind: 'graph', nodes: ['A', 'B', 'C'], edges: [['A', 'B', 3], ['B', 'C']] })
+  ok(a && a.nodes.length === 3, 'nodes 写字符串也认')
+  ok(a && a.edges.length === 2, '两条边都在')
+  ok(a && a.edges[0].w === '3' && a.edges[1].w === '', '有权重 / 没权重分开处理')
+
+  const b = nf({
+    nodes: [{ id: 'A' }, { name: 'B' }, { id: 'C' }],
+    edges: [{ from: 'A', to: 'B', weight: 5 }, { u: 'B', v: 'C', w: 2 }],
+  })
+  ok(b && b.nodes.map((n) => n.id).join('') === 'ABC', 'nodes 写对象也认（id / name 都吃）')
+  ok(b && b.edges[0].w === '5' && b.edges[1].w === '2', 'weight / w 都认')
+
+  const c = nf({ nodes: ['A', 'B'], edges: [['A', 'Z', 1], ['A', 'A', 2], ['A', 'B', 9]] })
+  ok(c && c.edges.length === 1, '顶点不存在 / 自环都被丢掉')
+
+  const d = nf({ kind: 'pie', nodes: ['A', 'B'], edges: [['A', 'B']] })
+  ok(d === null, '不认识的 kind → null（宁可不画）')
+
+  const e = nf({ kind: 'tree', nodes: ['A', 'B'], edges: [['A', 'B']], directed: true })
+  ok(e && e.directed === false, 'tree 一律当无向')
+
+  const f2 = nf({ nodes: ['A', 'B', 'C', 'D'], edges: [['A', 'B']], directed: true })
+  ok(f2 && f2.directed === true, 'directed 传下来')
+
+  // flattenPaper 要把 figure 一起带出去（以前 table 就是在这儿丢的）
+  const g = await import('./lib/grade.js')
+  const items = g.flattenPaper({
+    sections: [{
+      name: 'Section A', prefix: 'A',
+      questions: [
+        { stem: '看图求最小生成树', marks: 5, figure: { kind: 'graph', nodes: ['A', 'B'], edges: [['A', 'B', 3]] } },
+        { stem: '没图的题', marks: 3 },
+      ],
+    }],
+  })
+  ok(items[0].figure && items[0].figure.edges.length === 1, 'flattenPaper 带出 figure')
+  ok(items[1].figure === null, '没图的题 figure 是 null')
+}
+
 /* ---------------------------------------------------- 结果 */
 console.log(`\n${'='.repeat(46)}`)
 console.log(`通过 ${pass}   失败 ${fail}`)

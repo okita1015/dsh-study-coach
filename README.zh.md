@@ -613,6 +613,62 @@ if (!models.length) return { error: 'no-model' }   // 全体功能挂掉，其�
 
 `/health` 现在会列每个 provider 有几个模型、选中哪个，一眼看出哪个通道活着。
 
+## 试卷页：一屏一题，直接在空白上写（v0.18 ~ v0.21）
+
+试卷和笔记是两件事：笔记要满屏字读，试卷要一块空白做。所以顶栏多了一个 **📄 试卷**。
+
+**一屏一题**
+
+服务端 `flattenPaper()` 把卷子摊平成「一题一条」（`no / section / stem / parts / table /
+figure / marks / answer`），面板一次只显示一题，底部 `◀ 上一题` / `下一题 ▶` 翻页。
+
+**鼠标 / 触屏直接在留白上写**
+
+`<canvas>` + Pointer Events，`touchAction:none`，`setPointerCapture` 保证笔尖拖出画布再拖回来不断。
+四种笔色、三档粗细、橡皮、撤销、清空。
+
+两个实现要点（改之前先读）：
+
+- **笔迹不进 `useState`**：每画一笔都 setState 会让整页重渲染几十次，手感立刻变拖。
+  笔画存在 `useRef` 的 `inkStore` 里，`pointermove` 只增量画最后两个点之间那一小段。
+- **尺寸会变**（点「大板」、答案展开、窗口变化）→ 位图被重置 → 笔迹消失。
+  所以 `repaintInk()` 按 `devicePixelRatio` 重设位图并整张重画，用 `ResizeObserver` 盯住画板本身
+  （`window.resize` 不知道「只是这块板变高了」）。
+
+**橡皮**用 `globalCompositeOperation='destination-out'`，擦完是真的透明，不会拿白漆盖一层。
+笔迹按 `"卷子路径::A3"` 存 —— 每份卷子的题号都长一个样，不隔离换卷子会串。
+
+## 题目自带的图（v0.19 ~ v0.21）
+
+「下图是一个加权图…」这类题，光有文字是没法做的。模型画不出图，但它说得出图长什么样，
+所以让它给**结构化数据**，两边各自照着画：
+
+```json
+"figure": {
+  "kind": "graph",
+  "directed": false,
+  "nodes": ["A","B","C","D","E"],
+  "edges": [["A","B",4],["A","C",2],["B","C",1]]
+}
+```
+
+| 画在哪 | 怎么画 |
+|---|---|
+| 面板（试卷页） | `lib/client.js` 的 `paperFigureSvg()` → SVG，顶点按圆周摆、权重标在边中点 |
+| Word（导出的卷子） | `scripts/_figure.py` → PIL 画 PNG（4 倍超采样再缩，边缘不狗牙）插进 docx |
+
+**两边的布局规则必须一致**：`LOGIC_W/LOGIC_H/EDGE_R` 在两边都写了一份，改一处记得改另一处。
+
+`normalizeFigure()`（`lib/paper.js`）负责收拾模型的各种偷懒写法：`nodes` 写字符串还是对象、
+`edges` 写数组还是 `{from,to,weight}`、权重叫 `w` 还是 `weight` 还是没给、`directed` 漏了。
+**引用了不存在的顶点、自环、认不出来的结构一律丢掉** —— 画一张和题干数字对不上的图，
+比不画糟糕得多。
+
+figure 表达不了的东西（老师手绘图、电路照片、讲义截图）用题目右上角的 **🖼 配图** 手动挂，
+存在 `study/<科目>/paper-images.json`，键是 `"<卷子文件名>::A3"`。
+
+> 图片走 `GET raw?path=` 直出字节 —— `preview` 是把内容包成 JSON 给面板的，当 `<img src>` 使不了。
+
 ## 面板里直接看文件（v0.9.3）
 
 以前文件卡上的「打开」是 `<a target="_blank">` —— **Electron 里打不开新窗口**，点了像没反应，

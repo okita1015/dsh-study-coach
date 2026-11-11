@@ -51,6 +51,7 @@ dsh-study-coach / make_paper.py
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -68,6 +69,13 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
+
+# 题目自带的图（加权图 / 树 / 网络）在 Word 里得是位图，画在 _figure.py 里。
+# 有些科目（比如纯文科）永远用不到，导入失败也不该让整份卷子排不出来。
+try:
+    from _figure import render_figure as _render_figure
+except Exception:  # noqa: BLE001
+    _render_figure = None
 
 FS = font_set()
 SERIF = FS["serif"]
@@ -291,6 +299,26 @@ def add_question(doc, q, no, answers=False):
     else:
         r2 = p.add_run(stem_text)
         set_font(r2, BODY)
+
+    # 题目自带的图：画成 PNG 插在题干下面（真卷也是这个位置）。
+    # 画不出来就跳过 —— 少一张图总比整份卷子排不出来强。
+    fig = q.get("figure")
+    if fig and _render_figure is not None:
+        try:
+            import tempfile
+            import uuid
+
+            png = os.path.join(
+                tempfile.gettempdir(),
+                "dsh-paper-fig-%s.png" % uuid.uuid4().hex[:10],
+            )
+            r = _render_figure(fig, png, width_px=780)
+            if r.get("ok") and os.path.exists(png):
+                doc.add_picture(png, width=Cm(9.4))
+                doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                doc.paragraphs[-1].paragraph_format.space_after = Pt(2)
+        except Exception:  # noqa: BLE001
+            pass
 
     # 题干里的表格（K-map、真值表、对照表）
     table = q.get("table")

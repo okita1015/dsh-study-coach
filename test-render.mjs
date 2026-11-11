@@ -424,9 +424,51 @@ const PAPER_LIST = [{
   questions: 2, marks: 10, title: 'COMP2011',
 }]
 
+// 试卷页的题目：一题带图（figure），一题带表（table），另外带上挂的手动配图。
+// 这两样渲染跑不通的话，学生做题时就是「题干说要看图，下面什么都没有」。
+const PAPER_ITEMS = [
+  {
+    no: 'A1', section: 'Section A', stem: 'Find the minimum spanning tree of the graph below.',
+    marks: 5, parts: [{ label: '(a)', text: 'state the order of edges', marks: 3 }],
+    table: null,
+    figure: {
+      kind: 'graph', directed: false,
+      nodes: [{ id: 'A', label: 'A' }, { id: 'B', label: 'B' }, { id: 'C', label: 'C' }, { id: 'D', label: 'D' }],
+      edges: [{ a: 'A', b: 'B', w: '4' }, { a: 'A', b: 'C', w: '2' }, { a: 'B', b: 'C', w: '1' }, { a: 'C', b: 'D', w: '8' }],
+    },
+    image: '', answer: 'AC + BC + CD',
+  },
+  {
+    no: 'A2', section: 'Section A', stem: 'Write down F for every row of the truth table below.',
+    marks: 5, parts: [],
+    table: [['A', 'B', 'F'], ['0', '0', '0'], ['0', '1', '1'], ['1', '0', '1'], ['1', '1', '0']],
+    figure: null, image: '', answer: '0,1,1,0',
+  },
+]
+
 renderCase('批改·逐题作答', { ...base, grade: true, gradePapers: PAPER_LIST, gradePaper: PAPER_LIST[0].path, gradeItems: GRADE_ITEMS, gradeAns: { A1: '10' } })
 renderCase('批改·批改结果', { ...base, grade: true, gradePapers: PAPER_LIST, gradePaper: PAPER_LIST[0].path, gradeItems: GRADE_ITEMS, gradeResult: GRADE_RESULT })
 renderCase('批改·没有练习卷', { ...base, grade: true, gradePapers: [] })
+
+console.log('\n=== 试卷页 ===')
+renderCase('试卷页·逐题（带图 + 带表 + 手动配图）', {
+  ...base, tab: 'papers', papersDocs: PAPER_LIST, curPaperPath: PAPER_LIST[0].path,
+  paperItems: PAPER_ITEMS, paperImgs: { A2: 'C:/x/fig.png' },
+})
+renderCase('试卷页·大板 + 看答案', {
+  ...base, tab: 'papers', papersDocs: PAPER_LIST, curPaperPath: PAPER_LIST[0].path,
+  paperItems: PAPER_ITEMS, boardBig: true, paperAnsOpen: true,
+})
+renderCase('试卷页·配图抽屉', {
+  ...base, tab: 'papers', papersDocs: PAPER_LIST, curPaperPath: PAPER_LIST[0].path,
+  paperItems: PAPER_ITEMS, imgPickFor: 'A1',
+  paperLib: [
+    { name: 'graph.png', rel: '_build/figs/graph.png', path: 'C:/x/graph.png', ext: 'png', sizeText: '12 KB', mtime: '2026-11-11' },
+    { name: 'shot.jpg', rel: '2_图解笔记/shot.jpg', path: 'C:/x/shot.jpg', ext: 'jpg', sizeText: '88 KB', mtime: '2026-11-10' },
+  ],
+})
+renderCase('试卷页·这个科目没有卷子', { ...base, tab: 'papers', papersDocs: [] })
+renderCase('试卷页·还没拉到列表', { ...base, tab: 'papers', papersDocs: null })
 
 // 学生第一次打开就是这个状态：一个科目都没有。
 // 这条以前没测过 —— 空状态一旦渲染崩，面板就是一片白。
@@ -730,10 +772,14 @@ const hookEarly = countHooks({ config: null, tree: null, err: 'HTTP 404' })
 const hookNormal = countHooks(base)
 const hookNotes = countHooks({ ...base, tab: 'notes' })
 const hookGrade = countHooks({ ...base, grade: true, gradePapers: PAPER_LIST, gradeItems: GRADE_ITEMS })
+const hookPapers = countHooks({
+  ...base, tab: 'papers', papersDocs: PAPER_LIST, curPaperPath: PAPER_LIST[0].path, paperItems: PAPER_ITEMS,
+})
 ok(hookEarly === hookNormal,
   `早退帧与正常帧 hook 数一致（早退 ${hookEarly} / 正常 ${hookNormal}）`)
 ok(hookNotes === hookNormal, `切到笔记页 hook 数不变（${hookNotes}）`)
 ok(hookGrade === hookNormal, `打开批改抽屉 hook 数不变（${hookGrade}）`)
+ok(hookPapers === hookNormal, `切到试卷页 hook 数不变（${hookPapers}）`)
 ok(hookNormal > 40, `总 hook 数 ${hookNormal}（>40 说明没漏算）`)
 
 console.log('  state 顺序:', STATE_ORDER.join(', '))

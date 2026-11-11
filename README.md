@@ -500,6 +500,70 @@ study_paper { code: "COMP2011", from: 6, to: 10, answers: true }
 | GET | `paper/scope?code=` | selectable chapters + past papers usable as templates |
 | POST | `paper/generate` | `{code, from, to, answers}` → async job, poll `pipeline/status` |
 
+## The paper tab: one question per screen, write on it (v0.18 ~ v0.21)
+
+Notes and papers are different jobs: notes want a full screen of text, papers want a blank area
+to work in. So the top bar has its own **📄 试卷** tab now.
+
+**One question per screen**
+
+`flattenPaper()` on the server flattens a paper into one item per question
+(`no / section / stem / parts / table / figure / marks / answer`); the panel shows one at a time
+with `◀ 上一题` / `下一题 ▶` underneath.
+
+**Draw the answer with the mouse or a finger**
+
+`<canvas>` + Pointer Events, `touchAction:none`, `setPointerCapture` so a stroke keeps going when
+the pointer leaves the board. Four pen colours, three widths, eraser, undo, clear.
+
+Two things to know before touching it:
+
+- **Strokes do not live in `useState`.** Calling setState on every move re-renders the whole page
+  dozens of times per second and the pen starts lagging. They live in a `useRef` (`inkStore`), and
+  `pointermove` only draws the newest segment.
+- **The board changes size** (the 大板 toggle, the answer box opening, window resize) and a canvas
+  bitmap reset wipes the strokes. `repaintInk()` re-sizes by `devicePixelRatio` and redraws
+  everything; a `ResizeObserver` watches the board itself, because `window.resize` never fires when
+  only that element grows.
+
+The eraser uses `globalCompositeOperation='destination-out'` so erasing is genuinely transparent
+rather than white paint. Strokes are keyed by `"paperPath::A3"` — every paper numbers its questions
+the same way, so without the prefix two papers share one canvas.
+
+## Questions that carry their own figure (v0.19 ~ v0.21)
+
+"The figure below shows a weighted graph…" cannot be answered with text alone. The model cannot
+draw, but it can describe the graph, so it emits structured data and both renderers draw it:
+
+```json
+"figure": {
+  "kind": "graph",
+  "directed": false,
+  "nodes": ["A","B","C","D","E"],
+  "edges": [["A","B",4],["A","C",2],["B","C",1]]
+}
+```
+
+| Where | How |
+| --- | --- |
+| Panel (paper tab) | `paperFigureSvg()` in `lib/client.js` → SVG, vertices on a circle, weights on edge midpoints |
+| Word (exported paper) | `scripts/_figure.py` → PIL draws a PNG (4x supersampling, downscaled) and it is inserted into the docx |
+
+**Both renderers must agree on layout**: `LOGIC_W / LOGIC_H / EDGE_R` exist twice, once per side.
+Change one, change the other.
+
+`normalizeFigure()` in `lib/paper.js` absorbs the ways models slack off: nodes as strings or
+objects, edges as arrays or `{from,to,weight}`, weight spelled `w` / `weight` / `cost` or missing,
+`directed` omitted entirely. **Edges naming unknown vertices, self loops and unrecognisable shapes
+are dropped** — a figure whose numbers disagree with the stem is worse than no figure.
+
+Anything a graph cannot express (a teacher's hand drawing, a circuit photo, a slide screenshot) can
+be attached by hand with **🖼 配图** in the question header; it is stored in
+`study/<CODE>/paper-images.json` keyed by `"<paper file name>::A3"`.
+
+> Images are served by `GET raw?path=` as raw bytes — `preview` wraps content in JSON for the panel
+> and cannot be used as an `<img src>`.
+
 ## Requirements & cross-platform (v0.9.4)
 
 Works on **Windows / macOS / Linux**. Nothing to install beyond what DSH already ships.

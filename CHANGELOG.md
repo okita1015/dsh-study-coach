@@ -1,5 +1,49 @@
 # dsh-study-coach 更新日志
 
+## 0.21.0 — 按开源项目的标准把这一摊收干净
+
+功能在 0.18~0.20 分批落地，这一版是把它们做成「别人装上去也能用」的样子。
+
+**Word 里也有图了**
+
+之前只有面板会画 figure —— **导出的 docx 里一个图都没有**，打印出来照样做不了题。
+新增 `scripts/_figure.py`：PIL 画 PNG（4 倍超采样再缩，边缘不狗牙），`make_paper.py`
+在题干下面插进去。
+
+- 布局和面板那份 `paperFigureSvg()` 刻意对齐（`LOGIC_W / LOGIC_H / EDGE_R` 两边各一份，注释里写明了）
+- `_figure.py` 导入失败不崩：没有 Pillow 的机器照样能排卷子，只是没图
+- `requirements.txt` 补 `pillow>=10.0`
+
+实测：`ITP3902_Ch6-Ch10` 那份重排之后 docx 里嵌进 2 张图，`word/media/image1.png` /
+`image2.png` 各 58~59 KB。
+
+**跨平台硬伤清零**
+
+`audit.mjs` 抓到两处：
+
+- 一处注释里写了 Windows 盘符字面量，被误判成硬编码路径
+- 配图抽屉的提示写着 `'C:/Workspace/' + cur` —— macOS / Linux 用户看到的是错位置。
+  改成用服务端下发的 `config.workspace`
+
+现在 `audit.mjs` → **适配审计通过（0 条留意项）**。
+
+**测试留在仓库里了**
+
+之前验证 figure 用的是临时脚本，跑完就删 —— 开源项目不能这么干。现在：
+
+- `test.mjs` 新增 `[26]` 一节 15 条：`normalizeFigure()` 的各种偷懒写法（nodes 字符串/对象、
+  edges 数组/对象、weight/w、不存在的顶点、自环、未知 kind、tree 一律无向）、
+  `flattenPaper()` 有没有把 figure 带出去
+- `test-render.mjs` 新增 5 个渲染分支：试卷页·逐题（带图 + 带表 + 手动配图）、大板 + 看答案、
+  配图抽屉、没卷子、还没拉到列表；hook 数一致性多一条「切到试卷页」（115 → 115）
+
+`test.mjs` **245** 条、`test-render.mjs` **137** 条全过。
+
+**README 补了两节**（中英各一份）
+
+「试卷页」（含为什么笔迹不能进 state、为什么用 ResizeObserver）和「题目自带的图」
+（两边渲染器必须对齐的常量、normalizeFigure 的丢弃规则）。
+
 ## 0.20.0 — 题目附带的图，跟着题目一起搬上来
 
 0.19.0 只做到「表格能显示 + 可以手动给某题挂一张图」。真正的问题是另一件事：
