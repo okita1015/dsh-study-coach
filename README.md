@@ -347,14 +347,20 @@ topics.json / cards.json  (idempotent — re-running never duplicates)
    │ 3. render
    ▼
 1_复习资料/
-  ├── COMP2011_Lec6-9_自动笔记.md / .docx
-  ├── COMP2011_Lec6-9_总结.md
-  ├── COMP2011_Lec6-9_速记卡.md
+  ├── COMP2011_Lec6-9_自动笔记.docx / .pdf
+  ├── COMP2011_Lec6-9_总结.docx / .pdf
+  ├── COMP2011_Lec6-9_速记卡.docx / .pdf
   └── COMP2011_Lec6-9_讲义.pptx
 ```
 
 Every artifact is recorded in the subject's generated manifest, so the panel keeps them in a
 separate block from the real lecture files.
+
+**Markdown never lands in the library.** The body is only the raw material for typesetting and
+lives under `~/.dsh/study/<CODE>/.build/`. The notes tab reads the library, so ticking "📝 笔记"
+always renders Word as well — unticking Word cannot leave you with "the run finished and produced
+nothing". If the Word step itself fails, the body is copied into the library as a `.md` fallback
+so the notes tab can still read it.
 
 ### Why each step looks like this
 
