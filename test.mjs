@@ -902,6 +902,53 @@ ok(rRes.status === 200 && rRes.body.restored === bFiles.length, `原样恢复 ${
 const badRes = await callRoute(rRoute, { nope: true })
 ok(badRes.status === 400, '不是备份文件时拒绝（400）')
 
+/* ---------------------------------------------------- 24. 提炼失败自动救回 */
+console.log('\n[24] 提炼：坏 JSON 自动重试 / 长文本拆半')
+const pipe2 = await import('./lib/pipeline.js')
+const mkJob = () => ({ state: 'running', logs: [], errors: [], progress: {}, out: {} })
+
+// ① 第一次吐坏 JSON，第二次正常 → 应该自己重试成功
+let calls = 0
+const flaky = {
+  logger: { warn: () => {} },
+  __runModel: async () => {
+    calls++
+    if (calls === 1) return { ok: true, answer: '这不是 JSON，是模型跑题了' }
+    return {
+      ok: true,
+      answer: JSON.stringify({ topics: [{ lecture: 'Lec 1', title: 'T1' }], cards: [], note: 'n' }),
+    }
+  },
+}
+const rRetry = await pipe2.refineOne(flaky, mkJob(), { file: 'x.pdf', name: 'Lec1.pdf', text: 'aaaa' }, 0, 1, {})
+ok(rRetry.ok === true, '第一次坏 JSON 后自动重试成功')
+ok(rRetry.topics.length === 1, `拿到 ${rRetry.topics.length} 个知识点`)
+ok(calls === 2, `一共调了 ${calls} 次模型`)
+
+// ② 整份永远失败，但拆成两半各自能成 → 合并两段
+let n = 0
+const halves = {
+  logger: { warn: () => {} },
+  __runModel: async ({ user }) => {
+    n++
+    const body = String(user).split('--- 讲义正文开始 ---')[1] || ''
+    // 只有「整份」才会超过 15000；拆半后每段约 10000，就能过
+    if (body.length > 15000) return { ok: true, answer: '太长，吐不出来' }
+    return {
+      ok: true,
+      answer: JSON.stringify({
+        topics: [{ lecture: 'Lec 2', title: 'T' + n }],
+        cards: [],
+        note: '',
+      }),
+    }
+  },
+}
+const longText = 'x'.repeat(10000) + '\n' + 'y'.repeat(10000)
+const rSplit = await pipe2.refineOne(halves, mkJob(), { file: 'big.pdf', name: 'Lec2.pdf', text: longText }, 0, 1, {})
+ok(rSplit.ok === true, '整份失败后拆半救回来了')
+ok(rSplit.topics.length === 2, `两半各出一个知识点（实际 ${rSplit.topics.length}）`)
+
 /* ---------------------------------------------------- 结果 */
 console.log(`\n${'='.repeat(46)}`)
 console.log(`通过 ${pass}   失败 ${fail}`)
