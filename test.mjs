@@ -957,6 +957,12 @@ const bdir = pipe2.buildDir('ITP3902')
 ok(fs.existsSync(bdir), `buildDir 建得出来（${path.basename(bdir)}）`)
 ok(path.normalize(bdir).endsWith(path.join('study', 'ITP3902', '.build')), '落在 $DSH_HOME/study/<CODE>/.build')
 
+// 笔记模式：模型直接给一段 Markdown，不经过知识点 JSON
+const mdNote = pipe2.composeNote('ITP3902', [
+  { name: 'Lec1.pdf', lecture: 'Lec 1', md: '## 集合\n\n正文内容在这里', topics: [], cards: [] },
+], { scope: 'Lec1' })
+ok(mdNote.includes('正文内容在这里'), '笔记模式把模型给的 md 原样放进笔记')
+
 /* ---------------------------------------------------- 结果 */
 console.log(`\n${'='.repeat(46)}`)
 console.log(`通过 ${pass}   失败 ${fail}`)
