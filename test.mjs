@@ -1016,6 +1016,32 @@ console.log('\n[26] 题目自带的图：figure 规范化')
   ok(items[1].figure === null, '没图的题 figure 是 null')
 }
 
+/* --------------------------------- 27. 笔记里配讲义原图（抽出来插进正文） */
+// 光有文字讲「这棵树长什么样」，对复习帮助有限。讲义里本来就有图，抽出来插进去。
+console.log('\n[27] 笔记配图：讲义里抽出来的图要进正文')
+{
+  const p4 = await import('./lib/pipeline.js')
+  const refined = [{ name: 'Lec 5 - Graph 1.pptx', lecture: 'Lec 5', md: '## 图\n\n内容', topics: [], cards: [] }]
+
+  const noFig = p4.composeNote('ITP3902', refined, { scope: 'Lec5' })
+  ok(!noFig.includes('!['), '没有图的时候不写空的图片语法')
+
+  const withFig = p4.composeNote('ITP3902', refined, {
+    scope: 'Lec5',
+    figures: { 'Lec 5 - Graph 1.pptx': ['C:/a/one.png', 'C:/a/two.png'] },
+  })
+  ok(withFig.includes('![](C:/a/one.png)'), '图片语法写进去了')
+  ok(withFig.includes('![](C:/a/two.png)'), '两张都在')
+  ok(withFig.includes('这一章的图'), '带小标题')
+  ok(withFig.indexOf('这一章的图') > withFig.indexOf('## 图'), '图排在正文之后')
+
+  const capped = p4.composeNote('ITP3902', refined, {
+    figures: { 'Lec 5 - Graph 1.pptx': Array.from({ length: 20 }, (_, i) => 'C:/a/' + i + '.png') },
+  })
+  const n = (capped.match(/!\[/g) || []).length
+  ok(n === 6, `一章最多 6 张，别把笔记撑成相册（实际 ${n}）`)
+}
+
 /* ---------------------------------------------------- 结果 */
 console.log(`\n${'='.repeat(46)}`)
 console.log(`通过 ${pass}   失败 ${fail}`)

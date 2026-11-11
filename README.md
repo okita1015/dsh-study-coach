@@ -564,6 +564,49 @@ be attached by hand with **🖼 配图** in the question header; it is stored in
 > Images are served by `GET raw?path=` as raw bytes — `preview` wraps content in JSON for the panel
 > and cannot be used as an `<img src>`.
 
+## Other subjects: pull the pictures out of the source files (v0.22)
+
+`figure` only expresses "vertices and edges", which is discrete maths shaped. **Everyone else has
+circuit diagrams, chemical structures, histology slides, maps, financial statements** — a model
+cannot describe any of those in text.
+
+But those pictures are already inside the PDF / PPTX / DOCX the teacher handed out.
+
+`scripts/extract_images.py`:
+
+| Source | How |
+| --- | --- |
+| PDF | PyMuPDF walks pages and pulls the embedded bitmaps, **deduplicated by content md5** (headers, logos and watermarks repeat on every page — without this you get N copies of the same image) |
+| PPTX / DOCX / XLSX | they are zips; read `ppt/media/`, `word/media/`, `xl/media/` |
+| Anything else | reported as unsupported, nothing else breaks |
+
+- anything under 48px is dropped (bullets, icons, rules)
+- `emf` / `wmf` skipped (browsers cannot show them)
+- output goes to `~/.dsh/study/<CODE>/figures/`
+- **parentheses in the file name are replaced** — the path ends up inside Markdown's
+  `![alt](path)`, and a `)` in it truncates the syntax so the image never reaches Word
+
+In the panel: paper tab → **🖼 配图** in the question header → "📥 从讲义 / 真卷里抽图" →
+pick a file → the extracted images are listed below, one click attaches one to the question.
+
+## Figures in the generated notes (v0.22)
+
+After a notes run, each lecture is also scraped for images and `composeNote()` appends them at the
+end of that chapter:
+
+```markdown
+#### 这一章的图（来自讲义）
+
+![](/home/you/.dsh/study/ITP3902/figures/Lec 5 - Graph 1-image1.png)
+```
+
+At most 6 per chapter, so a note does not turn into a photo album. `make_docx.py` recognises
+`![alt](path)` lines and inserts the picture 14.5cm wide, centred; a non-empty `alt` becomes an
+italic grey caption.
+
+A failed extraction never breaks the note — plenty of lecture decks are pure text, and vector
+drawings cannot be scraped this way at all.
+
 ## Requirements & cross-platform (v0.9.4)
 
 Works on **Windows / macOS / Linux**. Nothing to install beyond what DSH already ships.

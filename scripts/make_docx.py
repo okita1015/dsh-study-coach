@@ -21,6 +21,7 @@ Markdown → Word。够用就好，不追求完整 CommonMark。
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -201,6 +202,29 @@ def convert(md: str, doc: Document):
                 r = p.add_run(code_line if code_line else " ")
                 set_run_font(r, Pt(9), mono=True, color=RGBColor(0x33, 0x3A, 0x46))
             doc.add_paragraph()
+            continue
+
+        # 图片：![图注](绝对路径)
+        # 笔记里配的是讲义原图 —— 光有文字讲「这棵树长什么样」，对复习帮助有限。
+        m_img = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", stripped)
+        if m_img:
+            alt = m_img.group(1).strip()
+            src = m_img.group(2).strip().strip('"').strip("'")
+            if os.path.exists(src):
+                try:
+                    doc.add_picture(src, width=Cm(14.5))
+                    doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    doc.paragraphs[-1].paragraph_format.space_after = Pt(2)
+                    if alt:
+                        cap = doc.add_paragraph()
+                        cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        cr = cap.add_run(alt)
+                        set_run_font(cr, Pt(8.5), color=RGBColor(0x6B, 0x74, 0x86))
+                        cr.font.italic = True
+                        cap.paragraph_format.space_after = Pt(8)
+                except Exception:  # noqa: BLE001
+                    pass
+            i += 1
             continue
 
         # 表格
