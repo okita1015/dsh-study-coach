@@ -1,6 +1,6 @@
 {
   "name": "dsh-study-coach",
-  "version": "0.22.0",
+  "version": "0.22.1",
   "description": "Study coach for DSH: lecture slides in, notes + practice papers + error log out. Free and open source.",
   "type": "module",
   "main": "lib/index.js",
@@ -24,6 +24,7 @@
     "doctor.mjs",
     "audit.mjs",
     "study-reset.mjs",
+    "check-client.mjs",
     "requirements.txt",
     "test.mjs",
     "test-render.mjs",
@@ -69,8 +70,9 @@
     "pptx"
   ],
   "scripts": {
-    "prepublishOnly": "node test.mjs",
-    "test": "node test.mjs",
+    "prepublishOnly": "node check-client.mjs && node test.mjs",
+    "test": "node check-client.mjs && node test.mjs",
+    "check:client": "node check-client.mjs",
     "test:render": "node test-render.mjs",
     "test:tools": "node check-tools.mjs",
     "doctor": "node doctor.mjs",

@@ -1,5 +1,62 @@
 # dsh-study-coach 更新日志
 
+## 0.22.1 — 配图不再变成一朵云，而且有了守门的
+
+这一版修的是一个真实的坏：练题卷上本该是加权图的题，面板里画成一朵 `unconfirmed` 云。
+
+**根因不是画图代码**
+
+一次改补丁时，`const tableEl = ...` 这块被从它该在的位置搬进了 `paperFigureSvg`
+的函数体里。**这个坏文件语法完全合法** —— 它只是把一段声明挪了个位置而已。于是：
+
+- `node --check lib/client.js` 放行（这个文件挂在 `window.__ModuleLoader__` 上，
+  没有 import/export，node 当 CommonJS 解析，语法本来就过）
+- `new Function(src)` 包一层放行
+- 桩掉 window 执行一遍也放行（工厂只在 apply 时才 return，顶层没碰那段代码）
+
+而 `test.mjs` 从头到尾只 import 服务端的 `lib/*.js`，**这个前端文件没人加载**。
+真正的错误要到浏览器里渲染到试卷页才抛：
+
+```
+ReferenceError: tableEl is not defined
+```
+
+宿主把渲染错误吞了，用户看到的就是一朵云。
+
+**新文件 `check-client.mjs`：把界面真的渲染一遍**
+
+不看语法，看行为 —— 桩掉 `window` / `require`，跑 `factory`，从 `exports.apply`
+拿面板组件，用可控 React 桩把 `useState` 初值直接灌成
+「config 已加载 + 停在试卷页 + 有一份带 figure 的卷子」，再调用组件函数渲染一帧：
+
+- `D1` 装载：拿得到 `exports.apply` / `inject`
+- `D2` 渲染：渲染一帧不许抛错
+- `D3` 图形通路：题带 `figure` 时渲染树里必须**真的出现 `<svg>`**，
+  并且 `circle` / `text` 数量对得上（静默跳过也算失败）
+
+验收方式是把事故现场重建一遍（`tableEl` 搬回 `paperFigureSvg` 体内），
+检查器当场报 `ReferenceError: tableEl is not defined`；好版本则是 `svg × 1`
+/ `circle × 3` / `text × 6`。**抓不到事故的检查器等于没有，所以这条是拿坏版本验过的。**
+
+已挂进 `npm test` 与 `prepublishOnly`，改前端之后先跑 `npm run check:client`。
+
+**图的渲染兼容两种写法**
+
+模型给节点的写法不固定，之前只认一种，另一种会导致整张图被静默跳过：
+
+- 节点：`"A"` 与 `{id:"A", label:"A"}` 都认
+- 边：`[a, b, w]` 与 `{from, to, weight}` 都认
+- 权重字段：`w` / `weight` / `label` 都认
+
+**卷子重排：不花模型额度**
+
+`POST api/study-coach/paper/rerender {code, file, want?}` + `rerenderPaper()`。
+拿 `.build/papers` 里现成的 json 重排 Word / PDF —— 改的是排版代码、题目和答案
+一个字不动的时候用，不会生成一份新卷子，也不消耗模型。排版前先校验 json 里
+确实有题目，免得排到一半发现坏了留下半份 docx。
+
+文件名与出卷时完全一致（抽了 `paperPaths()` 出来给两边共用，不留第二套拼法）。
+
 ## 0.22.0 — 别人的科目也能配图了
 
 上一版只解决了离散数学：`figure` 能表达「顶点 + 边」。但别人的科目是电路图、化学结构、
